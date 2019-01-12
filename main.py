@@ -46,7 +46,7 @@ class LM:
     print('Number of sentences: %d' % self.sent_num)
     print('Average sentence length: %.2f' % self.avg_sent_len)
 
-    utils.plot_iterable(sorted(self.sent_len_to_freq.items(), key=lambda kv: kv[0]),
+    utils.plot_kv_iterable(sorted(self.sent_len_to_freq.items(), key=lambda kv: kv[0]),
                         xlabel='Sentence length',
                         ylabel='Frequency',
                         log10_space=True)
@@ -114,7 +114,7 @@ class LM:
     :return: A Trie representing the ngrams
     """
 
-    tokens = self.get_corpus_tokens()
+    tokens, _ = self.get_corpus_tokens()
     ngrams = Trie() # root
     for i in range(len(tokens)-n+1):
       ngram = tokens[i:n]
@@ -124,4 +124,5 @@ class LM:
   ##########################################################################
 
 if __name__ == '__main__':
-  lm = LM()
+  lm = LM(vocabs_file=vocabulary)
+  lm.generate_ngrams(3)
