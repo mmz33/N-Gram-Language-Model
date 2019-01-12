@@ -78,7 +78,7 @@ class IndexMap:
     """
 
     if wrd not in self.wrd_to_idx:
-      return -1
+      return self.get_unk_id()
     return self.wrd_to_idx[wrd]
 
   def get_unique_wrd_count(self):
