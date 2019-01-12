@@ -1,4 +1,5 @@
 from queue import Queue
+from copy import copy
 
 class Trie:
   """Trie data structure used to store ngrams and their frequencies
@@ -40,6 +41,69 @@ class Trie:
     next_node = self.children[idx]
     return next_node.get_ngram_freq(ngram[1:])
 
+  def dfs(self, root, ngram, res, n, vocabulary):
+    """Apply depth first search recursively to extract ngrams and their frequencies
+
+    Note that this is slower than BFS and thus it is not mainly used
+    (It is not well tested also)
+
+    :param root: A Trie node, the root to start searching
+    :param ngram: A list representing an ngram
+    :param res: A list to store the result of the search
+    :param n: An integer, the rank of the gram
+    :param vocabulary: An IndexMap, it can be either for corpus or vocabulary
+    """
+
+    # leaf node
+    if len(ngram) == n:
+      trigram = []
+      for idx in ngram:
+        trigram.append(vocabulary.get_wrd_by_idx(idx))
+      res.append((trigram, root.get_freq()))
+
+    for idx, child in root.get_children().items():
+      ngram.append(idx)
+      self.dfs(child, ngram, res, n, vocabulary)
+      ngram = ngram[:-1]
+
+  def bfs(self, n, vocabulary):
+    """Apply a breadth first search to extract ngrams and their frequencies
+
+    :param root: A Trie node, the root to start searching
+    :param n: An integer, the rank of the gram
+    :param vocabulary: An IndexMap, it can be either for corpus or vocabulary
+    :return: A list, the elements are pairs of ngrams and their frequencies
+    """
+
+    res = [] # store ngrams with freq
+
+    # queue for trie nodes
+    q = Queue()
+    q.put(self) # add root
+
+    # queue for ngrams
+    ngrams_q = Queue()
+    ngrams_q.put([])
+
+    while not q.empty():
+      u = q.get() # curr node
+      curr_ngram = ngrams_q.get()
+
+      if len(curr_ngram) == n:
+        trigram = []
+        for idx in curr_ngram:
+          wrd = vocabulary.get_wrd_by_idx(idx)
+          trigram.append(wrd)
+        res.append((trigram, u.get_freq()))
+
+      for idx, child in u.get_children().items():
+        q.put(child)
+        next_ngram = copy(curr_ngram)
+        next_ngram.append(idx)
+        ngrams_q.put(next_ngram)
+
+    return res
+
   def get_children(self):
     """Return the children of the calling node"""
 
@@ -50,10 +114,7 @@ class Trie:
 
     return len(self.children)
 
-if __name__ == '__main__':
-  trie = Trie()
-  trie.add_ngram([1, 2, 3])
-  trie.add_ngram([1, 2, 3])
-  trie.add_ngram([1, 2, 5])
-  trie.add_ngram([1, 2, 10])
-  print('freq: ', trie.get_ngram_freq([1, 2, 3]))
+  def get_freq(self):
+    """Return node (prefix) frequency"""
+
+    return self.freq
