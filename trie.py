@@ -41,13 +41,12 @@ class Trie:
     next_node = self.children[idx]
     return next_node.get_ngram_freq(ngram[1:])
 
-  def dfs(self, root, ngram, res, n, vocabulary):
+  def dfs(self, ngram, res, n, vocabulary):
     """Apply depth first search recursively to extract ngrams and their frequencies
 
     Note that this is slower than BFS and thus it is not mainly used
     (It is not well tested also)
 
-    :param root: A Trie node, the root to start searching
     :param ngram: A list representing an ngram
     :param res: A list to store the result of the search
     :param n: An integer, the rank of the gram
@@ -59,17 +58,16 @@ class Trie:
       trigram = []
       for idx in ngram:
         trigram.append(vocabulary.get_wrd_by_idx(idx))
-      res.append((trigram, root.get_freq()))
+      res.append((trigram, self.get_freq()))
 
-    for idx, child in root.get_children().items():
+    for idx, child in self.get_children().items():
       ngram.append(idx)
-      self.dfs(child, ngram, res, n, vocabulary)
+      child.dfs(ngram, res, n, vocabulary)
       ngram = ngram[:-1]
 
   def bfs(self, n, vocabulary):
     """Apply a breadth first search to extract ngrams and their frequencies
 
-    :param root: A Trie node, the root to start searching
     :param n: An integer, the rank of the gram
     :param vocabulary: An IndexMap, it can be either for corpus or vocabulary
     :return: A list, the elements are pairs of ngrams and their frequencies
