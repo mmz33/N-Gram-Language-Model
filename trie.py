@@ -55,10 +55,10 @@ class Trie:
 
     # leaf node
     if len(ngram) == n:
-      trigram = []
+      ngram_res = []
       for idx in ngram:
-        trigram.append(vocabulary.get_wrd_by_idx(idx))
-      res.append((trigram, self.get_freq()))
+        ngram_res.append(vocabulary.get_wrd_by_idx(idx))
+      res.append((ngram_res, self.get_freq()))
 
     for idx, child in self.get_children().items():
       ngram.append(idx)
@@ -88,11 +88,11 @@ class Trie:
       curr_ngram = ngrams_q.get()
 
       if len(curr_ngram) == n:
-        trigram = []
+        ngram = []
         for idx in curr_ngram:
           wrd = vocabulary.get_wrd_by_idx(idx)
-          trigram.append(wrd)
-        res.append((trigram, u.get_freq()))
+          ngram.append(wrd)
+        res.append((ngram, u.get_freq()))
 
       for idx, child in u.get_children().items():
         q.put(child)
