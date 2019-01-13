@@ -51,7 +51,8 @@ class LM:
 
     utils.plot_kv_iterable(self.sent_len_to_freq,
                            xlabel='Sentence length',
-                           ylabel='Frequency')
+                           ylabel='Frequency',
+                           xticks=5)
 
   ################################ Ex2 (a) ################################
 
