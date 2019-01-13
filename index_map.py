@@ -81,7 +81,7 @@ class IndexMap:
       return self.get_unk_id()
     return self.wrd_to_idx[wrd]
 
-  def get_unique_wrd_count(self):
+  def get_num_of_words(self):
     """Return the number of unique words
 
     :return: An integer, the number of unique words
