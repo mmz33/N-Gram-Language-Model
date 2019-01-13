@@ -34,8 +34,7 @@ def plot_count_of_counts(d, n):
 
   res = defaultdict(int)
   for _, cnt in d:
-    if cnt not in res:
-      res[cnt] += 1
+    res[cnt] += 1
 
   plot_kv_iterable(res,
                    xlabel=str(n) + '-gram count',
