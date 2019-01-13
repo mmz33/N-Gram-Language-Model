@@ -118,9 +118,27 @@ class Trie:
     return self.freq
 
   def get_depth(self):
+    """Compute the depth of the trie"""
+
     if len(self.children) == 0:
       return 0
     depth = 0
     for _, child in self.children.items():
       depth = max(depth, child.get_depth())
     return 1 + depth
+
+  def get_ngram_last_node(self, ngram):
+    """Return the last node in the trie for the given ngram
+      It contains information about it's frequency
+
+    :param ngram: A list representing an ngram
+    :return: Trie Node if ngram exists and None otherwise
+    """
+
+    if len(ngram) == 0:
+      return self
+    idx = ngram[0]
+    if idx not in self.children:
+      return None # ngram not found
+    next_node = self.children[idx]
+    return next_node.get_ngram_last_node(ngram[1:])
