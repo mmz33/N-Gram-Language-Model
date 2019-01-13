@@ -141,7 +141,8 @@ class LM:
 
     root = self.generate_ngrams(n, vocabulary)
 
-    print('Extracting %d-grams using %s' % (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
+    print('Extracting %d-grams with their frequencies using %s' % \
+          (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
     # file_path = str(n)
     # if vocabulary == self.corpus:
@@ -162,4 +163,4 @@ class LM:
 if __name__ == '__main__':
   lm = LM(vocabs_file=vocabulary_path)
   lm.extract_ngrams_and_freq(n=3, vocabulary=lm.corpus)
-  # lm.extract_ngrams_and_freq(n=3, vocabulary=lm.vocabs)
+  #lm.extract_ngrams_and_freq(n=3, vocabulary=lm.vocabs)
