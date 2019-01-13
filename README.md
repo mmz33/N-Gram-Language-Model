@@ -4,3 +4,5 @@
 - [x] Store ngrams in a Trie data structure
 - [x] Efficiently extract ngrams and their frequencies
 - [x] Compute out-of-vocabulary (OOV) rate
+- [ ] Compute ngram probabilities with absolute discounting with interpolation smoothing.
+- [ ] Compute Perplexity
