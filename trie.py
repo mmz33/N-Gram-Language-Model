@@ -116,3 +116,11 @@ class Trie:
     """Return node (prefix) frequency"""
 
     return self.freq
+
+  def get_depth(self):
+    if len(self.children) == 0:
+      return 0
+    depth = 0
+    for _, child in self.children.items():
+      depth = max(depth, child.get_depth())
+    return 1 + depth
