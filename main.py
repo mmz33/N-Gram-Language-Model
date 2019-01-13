@@ -2,6 +2,7 @@ from collections import defaultdict
 from index_map import IndexMap
 import utils
 from trie import Trie
+from queue import Queue
 
 # data paths
 data_train = 'data/train.corpus'
@@ -22,7 +23,13 @@ class LM:
     self.sent_len_to_freq = defaultdict(int)
     self.prepare_lm()
     self.avg_sent_len = (1.0 * self.sent_len_sum)/self.sent_num
-    self.oov = 0 # out-of-vocabulary rate
+
+    self.unk_cnt = 0
+    self.oov = 0.0 # out-of-vocabulary rate
+
+    self.ngrams_root = Trie() # ngrams trie root
+
+    self.b = [] # contain b discounting params of (index+1)-gram
 
   def prepare_lm(self):
     """Prepare the language model for analysis and computations"""
@@ -95,7 +102,6 @@ class LM:
     tokens = []
     start_id = vocabulary.get_start_id()
     end_id = vocabulary.get_end_id()
-    unk_cnt = 0
     unk_id = vocabulary.get_unk_id()
     with open(data_train, 'r') as read_corpus:
       for line in read_corpus:
@@ -104,10 +110,10 @@ class LM:
         for wrd in sent:
           idx = vocabulary.get_idx_by_wrd(wrd)
           if idx == unk_id:
-            unk_cnt += 1
+            self.unk_cnt += 1
           tokens.append(idx)
         tokens.append(end_id)
-    return tokens, unk_cnt
+    return tokens
 
   def generate_ngrams(self, n, vocabulary):
     """Generate the ngrams of the corpus and store them in a Trie data structure
@@ -118,18 +124,18 @@ class LM:
     """
 
     print('Reading word tokens from %s' % 'corpus' if vocabulary == self.corpus else 'vocabulary')
-    tokens, unk_cnt = self.get_corpus_tokens(vocabulary)
+    tokens = self.get_corpus_tokens(vocabulary)
     if vocabulary != self.corpus:
-      self.oov = (unk_cnt / self.running_wrds_num) * 100
+      self.oov = (self.unk_cnt / self.running_wrds_num) * 100.0
       print('OOV rate: %.02f %%' % self.oov)
 
     print('Generating %d-grams from %s' % (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
-    ngrams = Trie() # root
     for i in range(len(tokens)-n+1):
       ngram = tokens[i:i+n]
-      ngrams.add_ngram(ngram)
-    return ngrams
+      self.ngrams_root.add_ngram(ngram)
+
+    print('%d-grams are stored in a Trie' % n)
 
   def extract_ngrams_and_freq(self, n, vocabulary):
     """Extract ngrams and their frequencies, display top 10 frequent ngrams,
@@ -139,18 +145,14 @@ class LM:
     :param vocabulary: An indexMap, either corpus or vocabs
     """
 
-    root = self.generate_ngrams(n, vocabulary)
+    self.generate_ngrams(n, vocabulary)
 
     print('Extracting %d-grams with their frequencies using %s' % \
           (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
-    # file_path = str(n)
-    # if vocabulary == self.corpus:
-    #   file_path += '-gram.count.corpus.txt'
-    # else:
-    #   file_path += '-gram.count.vocabs.txt'
+    res = self.ngrams_root.bfs(n, vocabulary)
 
-    res = root.bfs(n, vocabulary)
+    print('Extraction is done.')
 
     top_10_ngrams = utils.get_top_k_freq_items(res, k=10)
     print('Top 10 %d-grams:' % n, top_10_ngrams)
@@ -158,9 +160,122 @@ class LM:
     print('Preparing to plot count of counts distribution')
     utils.plot_count_of_counts(res, n)
 
-  ##########################################################################
+  ########################### Ex4 ##################################
+
+  def compute_b(self, n, vocabulary):
+    """Computes the discounting parameters for up to n-gram
+       e.g if n = 2, then it will compute b_uni, and b_bi
+
+    :param n: An integer, the rank of gram
+    :param vocabulary: An IndexMap, either corpus or vocabs
+    """
+
+    assert self.ngrams_root.get_depth() <= n
+
+    # ngrams are not added to the trie yet
+    if self.ngrams_root.get_num_of_children() == 0:
+      self.generate_ngrams(n, vocabulary)
+
+    q = Queue()
+    q.put(self.ngrams_root) # add root
+    limit = 1
+    while not q.empty():
+      if limit > n: break
+
+      singeltons = 0
+      doubletons = 0
+
+      u = q.get()
+      for idx, child in u.get_children().items():
+        q.put(child)
+        if child.get_freq() == 1:
+          singeltons += 1
+        elif child.get_freq() == 2:
+          doubletons += 1
+
+      self.b.append(singeltons/(singeltons + 2.0 * doubletons))
+      limit += 1
+
+  def compute_prob_helper(self, w, h):
+    """Helper function for compute_prob
+
+    :param w: An integer, the index of word w
+    :param h: A list of word indexes representing history words h
+    :return: A float, p(w|h)
+    """
+
+    # backoff to unigram (base case)
+    if len(h) == 0:
+      prob = self.ngrams_root.get_freq() # W - N_0(.)
+      prob /= float(self.vocabs.get_num_of_words() * self.corpus.get_num_of_words()) # W * N
+      b_uni = self.b[0]
+      prob *= b_uni
+      w_node = self.ngrams_root.get_ngram_last_node([w])
+      if w_node is not None:
+        w_freq = w_node.get_freq()
+        prob += max(float(w_freq - b_uni)/self.ngrams_root.get_freq(), 0.0)
+      return prob
+
+    h_node = self.ngrams_root.get_ngram_last_node(h)
+
+    # history is not found so backoff
+    if h_node is None:
+      return self.compute_prob_helper(w, h[1:])
+
+    prob = self.b[len(h)]
+    prob *= float(h_node.get_num_of_children()) / h_node.get_freq() # (W - N_0(v,.))/N(v)
+    prob *= self.compute_prob_helper(w, h[1:]) # recursively backoff
+
+    # add the first term of the interpolation
+    w_node = h_node.get_ngram_last_node([w])
+    if w_node is not None:
+      w_h_freq = w_node.get_freq()
+      prob += max(float(w_h_freq - self.b[len(h)]) / h_node.get_freq(), 0.0)
+
+    return prob
+
+  def compute_prob(self, w, h):
+    """Computes the bigram probability p(w|h) using absolute discounting with
+       interpolation where h is word history
+
+    :param w: An integer, the index of word w
+    :param h: A list containing the indexes of word history
+    :param vocabulary: An IndexMap, either corpus or vocabs
+    :return: A float, p(w|h)
+    """
+
+    # compute the discounting params
+    self.compute_b(2, vocabulary=self.corpus)
+    return self.compute_prob_helper(w, h)
+
+  def verify_normalization(self):
+    """Verify the normalization of bigram and unigram probabilities
+
+    :return: True if the probabilities are normalized and False otherwise
+    """
+
+    print('Verifying probability normalization...')
+
+    bigram_probs = 0.0
+    unigram_probs = 0.0
+    for w in range(0, self.vocabs.get_num_of_words()):
+      bigram_probs += self.compute_prob(w, [10]) # any word for history
+      unigram_probs += self.compute_prob(w, [])
+
+    print('bigram_probs: {}, unigram_probs: {}'.format(bigram_probs, unigram_probs))
+    return bigram_probs == 1.0 and unigram_probs == 1.0
+
+  ########################### Ex5 ##################################
+
+  def perplexity(self):
+    pass
 
 if __name__ == '__main__':
   lm = LM(vocabs_file=vocabulary_path)
-  lm.extract_ngrams_and_freq(n=3, vocabulary=lm.corpus)
-  #lm.extract_ngrams_and_freq(n=3, vocabulary=lm.vocabs)
+  # lm.show_corpus_analysis()
+  # lm.extract_ngrams_and_freq(n=3, vocabulary=lm.corpus)
+  # lm.extract_ngrams_and_freq(n=3, vocabulary=lm.vocabs)
+  if lm.verify_normalization():
+    print('Probabilities are normalized!')
+  else:
+    print('Probabilities are not normalized!')
