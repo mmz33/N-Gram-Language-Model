@@ -163,7 +163,7 @@ class LM:
     print('Extracting %d-grams with their frequencies using %s' % \
           (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
-    self.ngrams_root[n].bfs(n, vocabulary)
+    self.ngrams_root[n].bfs(n)
 
     print('Extraction is done.')
 
@@ -184,9 +184,9 @@ class LM:
     for i in range(1, n):
       self.generate_ngrams(n, vocabulary)
 
-    res_trigram = self.ngrams_root[n].bfs(n, vocabulary)
-    res_bi = self.ngrams_root[n-1].bfs(n-1, vocabulary)
-    res_uni = self.ngrams_root[n-2].bfs(n-2,vocabulary)
+    res_trigram = self.ngrams_root[n].bfs(n)
+    res_bi = self.ngrams_root[n-1].bfs(n-1)
+    res_uni = self.ngrams_root[n-2].bfs(n-2)
 
     summed_bigrams = defaultdict(int)
     summed_unigrams = defaultdict(int)
