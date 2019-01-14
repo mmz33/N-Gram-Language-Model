@@ -229,8 +229,6 @@ class LM:
     if n not in self.ngrams_root:
       self.generate_ngrams(n, vocabulary)
 
-    assert self.ngrams_root[n].get_depth() <= n
-
     q = Queue()
     q.put(self.ngrams_root[n]) # add root
     for i in range(n):
@@ -260,14 +258,15 @@ class LM:
 
     # backoff to unigram (base case)
     if len(h) == 0:
-      prob = self.ngrams_root[n].get_num_of_children() # W - N_0(.)
+      prob = self.b[0]
+      prob *= self.ngrams_root[n].get_num_of_children() # W - N_0(.)
       prob /= float(self.vocabs.get_num_of_words() * self.ngrams_root[n].get_freq()) # W * N
-      b_uni = self.b[0]
-      prob *= b_uni
-      w_node = self.ngrams_root[n].get_ngram_last_node([w])
-      if w_node is not None:
-        w_freq = w_node.get_freq()
-        prob += max(float(w_freq - b_uni)/self.ngrams_root[n].get_freq(), 0.0)
+      if w != self.vocabs.get_unk_id():
+        w_node = self.ngrams_root[n].get_ngram_last_node([w])
+        if w_node is not None:
+          w_freq = w_node.get_freq()
+          prob += max(float(w_freq - self.b[0]) / self.ngrams_root[n].get_freq(), 0.0)
+
       return prob
 
     h_node = self.ngrams_root[n].get_ngram_last_node(h)
@@ -307,10 +306,11 @@ class LM:
 
   ########################### Ex5 ##################################
 
-  def perplexity(self, n):
-    """Compute the perplexity of the language model on test corpus
+  def perplexity(self, corpus_file, n):
+    """Compute the perplexity of the language model on the given corpus
        using n-grams
 
+    :param corpus_file: A string, the path of the corpus
     :param n: An integer, the rank of the grams to be used for computing PP
     :return: A float, perplexity of the LM
     """
@@ -319,12 +319,12 @@ class LM:
 
     LL = 0.0
     norm = 0
-    with open(data_test, 'r') as test_corpus:
+    with open(corpus_file, 'r') as test_corpus:
       for line in test_corpus:
         sent = line.strip().split()
-        h = [self.vocabs.get_start_id()]
+        h = [self.corpus.get_start_id()]
         for wrd in sent:
-          w = self.vocabs.get_idx_by_wrd(wrd)
+          w = self.corpus.get_idx_by_wrd(wrd)
           if len(h) == n-1:
             prob = self.compute_prob(w, h, n)
             LL += np.log(prob)
@@ -332,7 +332,7 @@ class LM:
             h = h[1:]
           else:
             h.append(w)
-        LL += np.log(self.compute_prob(self.vocabs.get_end_id(), h, n))
+        LL += np.log(self.compute_prob(self.corpus.get_end_id(), h, n))
         norm += len(sent)+1
     return np.exp(-LL/norm)
 
@@ -340,12 +340,8 @@ class LM:
 
 if __name__ == '__main__':
   lm = LM(vocabs_file=vocabulary_path)
-  # lm.show_corpus_analysis()
-  # lm.extract_ngrams_and_freq(n=3, vocabulary=lm.corpus)
-  # lm.extract_ngrams_and_freq(n=3, vocabulary=lm.vocabs)
   if lm.verify_normalization():
     print('Probabilities are normalized!')
   else:
     print('Probabilities are not normalized!')
-  #lm.get_summed_counts(3, lm.corpus)
-  print('Test PP: {}'.format(lm.perplexity(n=2)))
+  print('Test PP: {}'.format(lm.perplexity(corpus_file=data_test, n=2)))
