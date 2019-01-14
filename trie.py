@@ -73,7 +73,7 @@ class Trie:
     :return: A list, the elements are pairs of ngrams and their frequencies
     """
 
-    res = [] # store ngrams with freq
+    res = {} # store ngrams with freq
 
     # queue for trie nodes
     q = Queue()
@@ -88,11 +88,11 @@ class Trie:
       curr_ngram = ngrams_q.get()
 
       if len(curr_ngram) == n:
-        ngram = []
-        for idx in curr_ngram:
-          wrd = vocabulary.get_wrd_by_idx(idx)
-          ngram.append(wrd)
-        res.append((ngram, u.get_freq()))
+        ngram = tuple(curr_ngram)
+        if ngram not in res:
+          res[ngram] = u.get_freq()
+        else:
+          res[ngram] += u.get_freq()
 
       for idx, child in u.get_children().items():
         q.put(child)
@@ -142,11 +142,3 @@ class Trie:
       return None # ngram not found
     next_node = self.children[idx]
     return next_node.get_ngram_last_node(ngram[1:])
-
-  def is_empty(self):
-    """Check if the current trie node has no children
-
-    :return: True if the current node has no children and False otherwise
-    """
-
-    return self.get_num_of_children() == 0

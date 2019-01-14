@@ -28,7 +28,13 @@ class LM:
     self.unk_cnt = 0
     self.oov = 0.0 # out-of-vocabulary rate
 
-    self.ngrams_root = Trie() # ngrams trie root
+    # NOTE: The purpose of creating this dict of roots is only
+    # for the following experiment: Comparing the computation of bigrams
+    # and unigrams using trigram counts vs the computation of bigrams
+    # and unigrams using their own tries. You should not create multiple
+    # trie trees usually since you have prefix information
+
+    self.ngrams_root = {} # contains the root of (key)-gram trie
 
     self.b = [] # contain b discounting params of (index+1)-gram
     self.compute_b(2, vocabulary=self.corpus)
@@ -84,13 +90,13 @@ class LM:
     return res
 
   @staticmethod
-  def get_top_10_freq_words():
+  def get_top_10_freq_words(res):
     """Return the top 10 frequent words
 
     :return: A list, top 10 frequent words
     """
 
-    return utils.get_top_k_freq_items(lm.get_word_freq_dict(), k=10)
+    return utils.get_top_k_freq_items(res, k=10)
 
   ############################# Ex2 (b)-(c)-(d)-(e) ####################################
 
@@ -136,9 +142,10 @@ class LM:
 
     print('Generating %d-grams from %s' % (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
+    self.ngrams_root[n] = Trie()  # ngrams trie root
     for i in range(len(tokens)-n+1):
       ngram = tokens[i:i+n]
-      self.ngrams_root.add_ngram(ngram)
+      self.ngrams_root[n].add_ngram(ngram)
 
     print('%d-grams are stored in a Trie' % n)
 
@@ -150,21 +157,19 @@ class LM:
     :param vocabulary: An indexMap, either corpus or vocabs
     """
 
-    if self.ngrams_root.is_empty():
+    if n not in self.ngrams_root:
       self.generate_ngrams(n, vocabulary)
 
     print('Extracting %d-grams with their frequencies using %s' % \
           (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
-    res = self.ngrams_root.bfs(n, vocabulary)
+    self.ngrams_root[n].bfs(n, vocabulary)
 
     print('Extraction is done.')
 
-    top_10_ngrams = utils.get_top_k_freq_items(res, k=10)
-    print('Top 10 %d-grams:' % n, top_10_ngrams)
-
-    print('Preparing to plot count of counts distribution')
-    utils.plot_count_of_counts(res, n)
+  @staticmethod
+  def get_top_10_ngram_freq(res):
+    return utils.get_top_k_freq_items(res, k=10)
 
   ########################### Ex4 ##################################
 
@@ -176,14 +181,14 @@ class LM:
     :param vocabulary: An IndexMap, either corpus or vocabs
     """
 
-    assert self.ngrams_root.get_depth() <= n
-
     # ngrams are not added to the trie yet
-    if self.ngrams_root.is_empty():
+    if n not in self.ngrams_root:
       self.generate_ngrams(n, vocabulary)
 
+    assert self.ngrams_root[n].get_depth() <= n
+
     q = Queue()
-    q.put(self.ngrams_root) # add root
+    q.put(self.ngrams_root[n]) # add root
     for i in range(n):
       singeltons = 0
       doubletons = 0
@@ -199,7 +204,7 @@ class LM:
       self.b.append(singeltons/(singeltons + 2.0 * doubletons))
       q = next_q
 
-  def compute_prob(self, w, h):
+  def compute_prob(self, w, h, n):
     """Computes the bigram probability p(w|h) using absolute discounting with
        interpolation where h is word history
 
@@ -211,25 +216,25 @@ class LM:
 
     # backoff to unigram (base case)
     if len(h) == 0:
-      prob = self.ngrams_root.get_num_of_children() # W - N_0(.)
-      prob /= float(self.vocabs.get_num_of_words() * self.ngrams_root.get_freq()) # W * N
+      prob = self.ngrams_root[n].get_num_of_children() # W - N_0(.)
+      prob /= float(self.vocabs.get_num_of_words() * self.ngrams_root[n].get_freq()) # W * N
       b_uni = self.b[0]
       prob *= b_uni
-      w_node = self.ngrams_root.get_ngram_last_node([w])
+      w_node = self.ngrams_root[n].get_ngram_last_node([w])
       if w_node is not None:
         w_freq = w_node.get_freq()
-        prob += max(float(w_freq - b_uni)/self.ngrams_root.get_freq(), 0.0)
+        prob += max(float(w_freq - b_uni)/self.ngrams_root[n].get_freq(), 0.0)
       return prob
 
-    h_node = self.ngrams_root.get_ngram_last_node(h)
+    h_node = self.ngrams_root[n].get_ngram_last_node(h)
 
     # history is not found so backoff
     if h_node is None:
-      return self.compute_prob(w, h[1:])
+      return self.compute_prob(w, h[1:], n)
 
     prob = self.b[len(h)]
     prob *= float(h_node.get_num_of_children()) / h_node.get_freq() # (W - N_0(v,.))/N(v)
-    prob *= self.compute_prob(w, h[1:]) # recursively backoff
+    prob *= self.compute_prob(w, h[1:], n) # recursively backoff
 
     # add the first term of the interpolation
     w_node = h_node.get_ngram_last_node([w])
@@ -250,8 +255,8 @@ class LM:
     bigram_probs = 0.0
     unigram_probs = 0.0
     for w in range(0, self.vocabs.get_num_of_words()):
-      bigram_probs += self.compute_prob(w, [10]) # any word for history
-      unigram_probs += self.compute_prob(w, [])
+      bigram_probs += self.compute_prob(w, [10], n=2) # any word for history
+      unigram_probs += self.compute_prob(w, [], n=2)
 
     print('bigram_probs: {}, unigram_probs: {}'.format(bigram_probs, unigram_probs))
     return abs(1.0 - bigram_probs) <= 1e-02 and abs(1.0 - unigram_probs) <= 1e-02
@@ -274,10 +279,10 @@ class LM:
         h = self.vocabs.get_start_id()
         for wrd in sent:
           w = self.vocabs.get_idx_by_wrd(wrd)
-          prob = self.compute_prob(w, [h])
+          prob = self.compute_prob(w, [h], n=2)
           LL += np.log(prob)
           h = w
-        LL += np.log(self.compute_prob(self.vocabs.get_end_id(), [h]))
+        LL += np.log(self.compute_prob(self.vocabs.get_end_id(), [h], n=2))
         norm += len(sent)+1
     return np.exp(-LL/norm)
 
