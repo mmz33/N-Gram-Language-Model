@@ -142,3 +142,11 @@ class Trie:
       return None # ngram not found
     next_node = self.children[idx]
     return next_node.get_ngram_last_node(ngram[1:])
+
+  def is_empty(self):
+    """Check if the current trie node has no children
+
+    :return: True if the current node has no children and False otherwise
+    """
+
+    return self.get_num_of_children() == 0

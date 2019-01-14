@@ -31,6 +31,10 @@ class LM:
     self.ngrams_root = Trie() # ngrams trie root
 
     self.b = [] # contain b discounting params of (index+1)-gram
+    self.compute_b(2, vocabulary=self.corpus)
+    print('Discounting parameters:')
+    for n in range(len(self.b)):
+      print('b_{} = {}'.format(n+1, self.b[n]))
 
   def prepare_lm(self):
     """Prepare the language model for analysis and computations"""
@@ -146,7 +150,8 @@ class LM:
     :param vocabulary: An indexMap, either corpus or vocabs
     """
 
-    self.generate_ngrams(n, vocabulary)
+    if self.ngrams_root.is_empty():
+      self.generate_ngrams(n, vocabulary)
 
     print('Extracting %d-grams with their frequencies using %s' % \
           (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
@@ -174,7 +179,7 @@ class LM:
     assert self.ngrams_root.get_depth() <= n
 
     # ngrams are not added to the trie yet
-    if self.ngrams_root.get_num_of_children() == 0:
+    if self.ngrams_root.is_empty():
       self.generate_ngrams(n, vocabulary)
 
     q = Queue()
@@ -197,17 +202,19 @@ class LM:
       self.b.append(singeltons/(singeltons + 2.0 * doubletons))
       limit += 1
 
-  def compute_prob_helper(self, w, h):
-    """Helper function for compute_prob
+  def compute_prob(self, w, h):
+    """Computes the bigram probability p(w|h) using absolute discounting with
+       interpolation where h is word history
 
     :param w: An integer, the index of word w
-    :param h: A list of word indexes representing history words h
+    :param h: A list containing the indexes of word history
+    :param vocabulary: An IndexMap, either corpus or vocabs
     :return: A float, p(w|h)
     """
 
     # backoff to unigram (base case)
     if len(h) == 0:
-      prob = self.ngrams_root.get_freq() # W - N_0(.)
+      prob = self.ngrams_root.get_num_of_children() # W - N_0(.)
       prob /= float(self.vocabs.get_num_of_words() * self.corpus.get_num_of_words()) # W * N
       b_uni = self.b[0]
       prob *= b_uni
@@ -221,11 +228,11 @@ class LM:
 
     # history is not found so backoff
     if h_node is None:
-      return self.compute_prob_helper(w, h[1:])
+      return self.compute_prob(w, h[1:])
 
     prob = self.b[len(h)]
     prob *= float(h_node.get_num_of_children()) / h_node.get_freq() # (W - N_0(v,.))/N(v)
-    prob *= self.compute_prob_helper(w, h[1:]) # recursively backoff
+    prob *= self.compute_prob(w, h[1:]) # recursively backoff
 
     # add the first term of the interpolation
     w_node = h_node.get_ngram_last_node([w])
@@ -234,20 +241,6 @@ class LM:
       prob += max(float(w_h_freq - self.b[len(h)]) / h_node.get_freq(), 0.0)
 
     return prob
-
-  def compute_prob(self, w, h):
-    """Computes the bigram probability p(w|h) using absolute discounting with
-       interpolation where h is word history
-
-    :param w: An integer, the index of word w
-    :param h: A list containing the indexes of word history
-    :param vocabulary: An IndexMap, either corpus or vocabs
-    :return: A float, p(w|h)
-    """
-
-    # compute the discounting params
-    self.compute_b(2, vocabulary=self.corpus)
-    return self.compute_prob_helper(w, h)
 
   def verify_normalization(self):
     """Verify the normalization of bigram and unigram probabilities
