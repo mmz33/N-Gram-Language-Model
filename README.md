@@ -5,4 +5,4 @@
 - [x] Efficiently extract ngrams and their frequencies
 - [x] Compute out-of-vocabulary (OOV) rate
 - [x] Compute ngram probabilities with absolute discounting with interpolation smoothing.
-- [ ] Compute Perplexity
+- [x] Compute Perplexity
