@@ -30,14 +30,14 @@ class LM:
 
     # NOTE: The purpose of creating this dict of roots is only
     # for the following experiment: Comparing the computation of bigrams
-    # and unigrams using trigram counts vs the computation of bigrams
-    # and unigrams using their own tries. You should not create multiple
+    # and unigrams probs using trigram counts vs the computation of bigrams
+    # and unigrams probs using their own tries. You should not create multiple
     # trie trees usually since you have prefix information
 
     self.ngrams_root = {} # contains the root of (key)-gram trie
 
     self.b = [] # contain b discounting params of (index+1)-gram
-    self.compute_b(2, vocabulary=self.corpus)
+    self.compute_b(n=2, vocabulary=self.corpus)
     print('Discounting parameters:')
     for n in range(len(self.b)):
       print('b_{} = {}'.format(n+1, self.b[n]))
@@ -63,6 +63,7 @@ class LM:
   def show_corpus_analysis(self):
     """Show corpus data analysis"""
 
+    print('Size of vocabulary: %d' % self.vocabs.get_num_of_words())
     print('Number of running words: %d' % self.running_wrds_num)
     print('Number of sentences: %d' % self.sent_num)
     print('Average sentence length: %.2f' % self.avg_sent_len)
@@ -127,9 +128,10 @@ class LM:
     return tokens
 
   def generate_ngrams(self, n, vocabulary):
-    """Generate the ngrams of the corpus and store them in a Trie data structure
+    """Generate ngrams from the given vocabulary (corpus or vocabs)
+       and store them in a Trie data structure
 
-    :param n: An integer, the rank of the gram
+    :param n: An integer, the rank of the grams that are generated
     :param vocabulary: An IndexMap, either corpus or vocabs
     :return: A Trie representing the ngrams
     """
@@ -163,31 +165,36 @@ class LM:
     print('Extracting %d-grams with their frequencies using %s' % \
           (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
-    self.ngrams_root[n].bfs(n)
+    res = self.ngrams_root[n].bfs(n)
 
     print('Extraction is done.')
 
+    return res
+
   @staticmethod
   def get_top_10_ngram_freq(res):
+    """Return the top 10 frequent ngrams
+
+    :param res: A dict, keys are ngrams and values are counts
+    :return: A list of top 10 frequent ngrams
+    """
+
     return utils.get_top_k_freq_items(res, k=10)
 
-
-    ############################# Ex3 ####################################
+  ############################# Ex3 ####################################
 
   def get_summed_counts(self, n, vocabulary):
     """Calculate bi-/uni- grams from trigrams and compare to directly extracted bi-/uni- grams
 
-       :param n: An integer, the rank of the soource n-gram
-       :param vocabulary: An indexMap, either corpus or vocabs
-       """
+    :param n: An integer, the rank of the source n-gram
+    :param vocabulary: An indexMap, either corpus or vocabs
+    """
 
-    for i in range(1, n+1):
-      if i not in self.ngrams_root:
-        self.generate_ngrams(i, vocabulary)
+    assert n >= 3, 'n should be at least 3'
 
-    res_trigram = self.ngrams_root[n].bfs(n)
-    res_bi = self.ngrams_root[n-1].bfs(n-1)
-    res_uni = self.ngrams_root[n-2].bfs(n-2)
+    res_trigram = self.extract_ngrams_and_freq(n, vocabulary)
+    res_bi = self.extract_ngrams_and_freq(n-1, vocabulary)
+    res_uni = self.extract_ngrams_and_freq(n-2, vocabulary)
 
     summed_bigrams = defaultdict(int)
     summed_unigrams = defaultdict(int)
@@ -215,6 +222,8 @@ class LM:
     :param n: An integer, the rank of gram
     :param vocabulary: An IndexMap, either corpus or vocabs
     """
+
+    print('Computing discounting parameters...')
 
     # ngrams are not added to the trie yet
     if n not in self.ngrams_root:
@@ -245,7 +254,7 @@ class LM:
 
     :param w: An integer, the index of word w
     :param h: A list containing the indexes of word history
-    :param vocabulary: An IndexMap, either corpus or vocabs
+    :param n: An integer, the rank of the grams
     :return: A float, p(w|h)
     """
 
@@ -298,9 +307,11 @@ class LM:
 
   ########################### Ex5 ##################################
 
-  def perplexity(self):
+  def perplexity(self, n):
     """Compute the perplexity of the language model on test corpus
+       using n-grams
 
+    :param n: An integer, the rank of the grams to be used for computing PP
     :return: A float, perplexity of the LM
     """
 
@@ -311,13 +322,17 @@ class LM:
     with open(data_test, 'r') as test_corpus:
       for line in test_corpus:
         sent = line.strip().split()
-        h = self.vocabs.get_start_id()
+        h = [self.vocabs.get_start_id()]
         for wrd in sent:
           w = self.vocabs.get_idx_by_wrd(wrd)
-          prob = self.compute_prob(w, [h], n=2)
-          LL += np.log(prob)
-          h = w
-        LL += np.log(self.compute_prob(self.vocabs.get_end_id(), [h], n=2))
+          if len(h) == n-1:
+            prob = self.compute_prob(w, h, n)
+            LL += np.log(prob)
+            h.append(w)
+            h = h[1:]
+          else:
+            h.append(w)
+        LL += np.log(self.compute_prob(self.vocabs.get_end_id(), h, n))
         norm += len(sent)+1
     return np.exp(-LL/norm)
 
@@ -332,5 +347,5 @@ if __name__ == '__main__':
     print('Probabilities are normalized!')
   else:
     print('Probabilities are not normalized!')
-  lm.get_summed_counts(3, lm.corpus)
-  print('Test PP: {}'.format(lm.perplexity()))
+  #lm.get_summed_counts(3, lm.corpus)
+  print('Test PP: {}'.format(lm.perplexity(n=2)))
