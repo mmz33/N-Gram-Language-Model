@@ -212,7 +212,7 @@ class LM:
     # backoff to unigram (base case)
     if len(h) == 0:
       prob = self.ngrams_root.get_num_of_children() # W - N_0(.)
-      prob /= float(self.vocabs.get_num_of_words() * self.corpus.get_num_of_words()) # W * N
+      prob /= float(self.vocabs.get_num_of_words() * self.ngrams_root.get_freq()) # W * N
       b_uni = self.b[0]
       prob *= b_uni
       w_node = self.ngrams_root.get_ngram_last_node([w])
@@ -254,7 +254,7 @@ class LM:
       unigram_probs += self.compute_prob(w, [])
 
     print('bigram_probs: {}, unigram_probs: {}'.format(bigram_probs, unigram_probs))
-    return bigram_probs == 1.0 and unigram_probs == 1.0
+    return abs(1.0 - bigram_probs) <= 1e-02 and abs(1.0 - unigram_probs) <= 1e-02
 
   ########################### Ex5 ##################################
 
@@ -292,3 +292,4 @@ if __name__ == '__main__':
     print('Probabilities are normalized!')
   else:
     print('Probabilities are not normalized!')
+  print('Test PP: {}'.format(lm.perplexity()))
