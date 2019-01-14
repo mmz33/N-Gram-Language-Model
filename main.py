@@ -184,23 +184,20 @@ class LM:
 
     q = Queue()
     q.put(self.ngrams_root) # add root
-    limit = 1
-    while not q.empty():
-      if limit > n: break
-
+    for i in range(n):
       singeltons = 0
       doubletons = 0
-
-      u = q.get()
-      for idx, child in u.get_children().items():
-        q.put(child)
-        if child.get_freq() == 1:
-          singeltons += 1
-        elif child.get_freq() == 2:
-          doubletons += 1
-
+      next_q = Queue()
+      while not q.empty():
+        u = q.get()
+        for idx, child in u.get_children().items():
+          next_q.put(child)
+          if child.get_freq() == 1:
+            singeltons += 1
+          elif child.get_freq() == 2:
+            doubletons += 1
       self.b.append(singeltons/(singeltons + 2.0 * doubletons))
-      limit += 1
+      q = next_q
 
   def compute_prob(self, w, h):
     """Computes the bigram probability p(w|h) using absolute discounting with
