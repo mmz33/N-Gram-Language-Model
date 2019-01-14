@@ -3,6 +3,7 @@ from index_map import IndexMap
 import utils
 from trie import Trie
 from queue import Queue
+import numpy as np
 
 # data paths
 data_train = 'data/train.corpus'
@@ -268,7 +269,29 @@ class LM:
   ########################### Ex5 ##################################
 
   def perplexity(self):
-    pass
+    """Compute the perplexity of the language model on test corpus
+
+    :return: A float, perplexity of the LM
+    """
+
+    print('Computing model perplexity...')
+
+    LL = 0.0
+    norm = 0
+    with open(data_test, 'r') as test_corpus:
+      for line in test_corpus:
+        sent = line.strip().split()
+        h = self.vocabs.get_start_id()
+        for wrd in sent:
+          w = self.vocabs.get_idx_by_wrd(wrd)
+          prob = self.compute_prob(w, [h])
+          LL += np.log(prob)
+          h = w
+        LL += np.log(self.compute_prob(self.vocabs.get_end_id(), [h]))
+        norm += len(sent)+1
+    return np.exp(-LL/norm)
+
+#######################################################################
 
 if __name__ == '__main__':
   lm = LM(vocabs_file=vocabulary_path)
