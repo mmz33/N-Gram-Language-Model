@@ -181,8 +181,9 @@ class LM:
        :param vocabulary: An indexMap, either corpus or vocabs
        """
 
-    for i in range(1, n):
-      self.generate_ngrams(n, vocabulary)
+    for i in range(1, n+1):
+      if i not in self.ngrams_root:
+        self.generate_ngrams(i, vocabulary)
 
     res_trigram = self.ngrams_root[n].bfs(n)
     res_bi = self.ngrams_root[n-1].bfs(n-1)
