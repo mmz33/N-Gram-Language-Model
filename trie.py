@@ -65,11 +65,10 @@ class Trie:
       child.dfs(ngram, res, n, vocabulary)
       ngram = ngram[:-1]
 
-  def bfs(self, n, vocabulary):
+  def bfs(self, n):
     """Apply a breadth first search to extract ngrams and their frequencies
 
     :param n: An integer, the rank of the gram
-    :param vocabulary: An IndexMap, it can be either for corpus or vocabulary
     :return: A list, the elements are pairs of ngrams and their frequencies
     """
 
@@ -101,44 +100,6 @@ class Trie:
         ngrams_q.put(next_ngram)
 
     return res
-
-  def extract_ngram_indexes(self, n, vocabulary):
-      """Apply a breadth first search to extract ngrams and their frequencies
-
-      :param n: An integer, the rank of the gram
-      :param vocabulary: An IndexMap, it can be either for corpus or vocabulary
-      :return: A list, the elements are pairs of ngrams and their frequencies
-      """
-
-      res = {}  # store ngrams with freq
-
-      # queue for trie nodes
-      q = Queue()
-      q.put(self)  # add root
-
-      # queue for ngrams
-      ngrams_q = Queue()
-      ngrams_q.put([])
-      visited = set()
-      while not q.empty():
-          u = q.get()  # curr node
-          visited.add(u)
-          curr_ngram = ngrams_q.get()
-
-          if len(curr_ngram) == n:
-              if n != 1:
-                  res[tuple(curr_ngram)] = u.get_freq()
-              else:
-                  res[curr_ngram[0]] = u.get_freq()
-
-          for idx, child in u.get_children().items():
-              if child not in visited:
-                  q.put(child)
-                  next_ngram = copy(curr_ngram)
-                  next_ngram.append(idx)
-                  ngrams_q.put(next_ngram)
-
-      return res
 
   def get_children(self):
     """Return the children of the calling node"""

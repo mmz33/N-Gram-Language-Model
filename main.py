@@ -181,27 +181,29 @@ class LM:
        :param vocabulary: An indexMap, either corpus or vocabs
        """
 
-    root = self.generate_ngrams(n, vocabulary)
-    res_trigram = self.ngrams_root.extract_ngram_indexes(n, vocabulary)
-    res_bi = self.ngrams_root.extract_ngram_indexes(2, vocabulary)
-    res_uni = self.ngrams_root.extract_ngram_indexes(1,vocabulary)
+    for i in range(1, n):
+      self.generate_ngrams(n, vocabulary)
+
+    res_trigram = self.ngrams_root[n].bfs(n, vocabulary)
+    res_bi = self.ngrams_root[n-1].bfs(n-1, vocabulary)
+    res_uni = self.ngrams_root[n-2].bfs(n-2,vocabulary)
 
     summed_bigrams = defaultdict(int)
     summed_unigrams = defaultdict(int)
 
-    for k,v in res_trigram.items():
+    for k, v in res_trigram.items():
       summed_bigrams[k[1:]] += v
       summed_unigrams[k[-1]] += v
 
     print("bigram difference: ")
     for k, v in res_bi.items():
-      if(v!= summed_bigrams[k]):
+      if v != summed_bigrams[k]:
         print("bigram: {} extracted value: {} summed value: {}".format(k, v ,summed_bigrams[k]))
 
     print("unigram difference: ")
     for k, v in res_uni.items():
-      if(v!= summed_unigrams[k]):
-        print("bigram: {} extracted value: {} summed value: {}".format(k, v, summed_unigrams[k]))
+      if v != summed_unigrams[k]:
+        print("unigram: {} extracted value: {} summed value: {}".format(k, v, summed_unigrams[k]))
 
   ########################### Ex4 ##################################
 
