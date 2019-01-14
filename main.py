@@ -166,6 +166,38 @@ class LM:
     print('Preparing to plot count of counts distribution')
     utils.plot_count_of_counts(res, n)
 
+
+    ############################# Ex3 ####################################
+
+  def get_summed_counts(self, n, vocabulary):
+    """Calculate bi-/uni- grams from trigrams and compare to directly extracted bi-/uni- grams
+
+       :param n: An integer, the rank of the soource n-gram
+       :param vocabulary: An indexMap, either corpus or vocabs
+       """
+
+    root = self.generate_ngrams(n, vocabulary)
+    res_trigram = self.ngrams_root.extract_ngram_indexes(n, vocabulary)
+    res_bi = self.ngrams_root.extract_ngram_indexes(2, vocabulary)
+    res_uni = self.ngrams_root.extract_ngram_indexes(1,vocabulary)
+
+    summed_bigrams = defaultdict(int)
+    summed_unigrams = defaultdict(int)
+
+    for k,v in res_trigram.items():
+      summed_bigrams[k[1:]] += v
+      summed_unigrams[k[-1]] += v
+
+    print("bigram difference: ")
+    for k, v in res_bi.items():
+      if(v!= summed_bigrams[k]):
+        print("bigram: {} extracted value: {} summed value: {}".format(k, v ,summed_bigrams[k]))
+
+    print("unigram difference: ")
+    for k, v in res_uni.items():
+      if(v!= summed_unigrams[k]):
+        print("bigram: {} extracted value: {} summed value: {}".format(k, v, summed_unigrams[k]))
+
   ########################### Ex4 ##################################
 
   def compute_b(self, n, vocabulary):
@@ -292,4 +324,5 @@ if __name__ == '__main__':
     print('Probabilities are normalized!')
   else:
     print('Probabilities are not normalized!')
+  lm.get_summed_counts(3, lm.corpus)
   print('Test PP: {}'.format(lm.perplexity()))
