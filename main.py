@@ -261,11 +261,11 @@ class LM:
       prob = self.b[0]
       prob *= self.ngrams_root[n].get_num_of_children() # W - N_0(.)
       prob /= float(self.vocabs.get_num_of_words() * self.ngrams_root[n].get_freq()) # W * N
-      if w != self.vocabs.get_unk_id():
-        w_node = self.ngrams_root[n].get_ngram_last_node([w])
-        if w_node is not None:
-          w_freq = w_node.get_freq()
-          prob += max(float(w_freq - self.b[0]) / self.ngrams_root[n].get_freq(), 0.0)
+
+      w_node = self.ngrams_root[n].get_ngram_last_node([w])
+      if w_node is not None:
+        w_freq = w_node.get_freq()
+        prob += max(float(w_freq - self.b[0]) / self.ngrams_root[n].get_freq(), 0.0)
 
       return prob
 
