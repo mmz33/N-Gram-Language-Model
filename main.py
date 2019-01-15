@@ -136,20 +136,36 @@ class LM:
     :return: A Trie representing the ngrams
     """
 
-    print('Reading word tokens from %s' % 'corpus' if vocabulary == self.corpus else 'vocabulary')
-    tokens = self.get_corpus_tokens(vocabulary)
-    if vocabulary != self.corpus:
-      self.oov = (self.unk_cnt / self.running_wrds_num) * 100.0
-      print('OOV rate: %.02f %%' % self.oov)
+    start_id = vocabulary.get_start_id()
+    end_id = vocabulary.get_end_id()
+    unk_id = vocabulary.get_unk_id()
 
     print('Generating %d-grams from %s' % (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
-    self.ngrams_root[n] = Trie()  # ngrams trie root
-    for i in range(len(tokens)-n+1):
-      ngram = tokens[i:i+n]
-      self.ngrams_root[n].add_ngram(ngram)
+    self.ngrams_root[n] = Trie()
+    with open(data_train, 'r') as read_corpus:
+      for line in read_corpus:
+        sent = line.strip().split(' ')
+        ngram = [start_id]
+        for wrd in sent:
+          if len(ngram) == n:
+            self.ngrams_root[n].add_ngram(ngram)
+            ngram = ngram[1:]
+          idx = vocabulary.get_idx_by_wrd(wrd)
+          if idx == unk_id:
+            self.unk_cnt += 1
+          ngram.append(idx)
+        if len(ngram) == n:
+          self.ngrams_root[n].add_ngram(ngram)
+          ngram = ngram[1:]
+        ngram.append(end_id)
+        self.ngrams_root[n].add_ngram(ngram)
 
-    print('%d-grams are stored in a Trie' % n)
+    print('%d-grams are now stored in a Trie' % n)
+
+    if vocabulary != self.corpus:
+      self.oov = (self.unk_cnt / self.running_wrds_num) * 100.0
+      print('OOV rate: %.02f %%' % self.oov)
 
   def extract_ngrams_and_freq(self, n, vocabulary):
     """Extract ngrams and their frequencies, display top 10 frequent ngrams,
@@ -171,15 +187,23 @@ class LM:
 
     return res
 
-  @staticmethod
-  def get_top_10_ngram_freq(res):
+  def get_top_10_ngram_freq(self, n, vocabulary):
     """Return the top 10 frequent ngrams
 
     :param res: A dict, keys are ngrams and values are counts
     :return: A list of top 10 frequent ngrams
     """
 
-    return utils.get_top_k_freq_items(res, k=10)
+    top_10_ngrams = utils.get_top_k_freq_items(self.extract_ngrams_and_freq(n, vocabulary), k=10)
+
+    # map to words
+    res = []
+    for kv in top_10_ngrams:
+      ngram_wrds = []
+      for idx in kv[0]:
+        ngram_wrds.append(vocabulary.get_wrd_by_idx(idx))
+      res.append((ngram_wrds, kv[1]))
+    return res
 
   ############################# Ex3 ####################################
 
@@ -340,6 +364,7 @@ class LM:
 
 if __name__ == '__main__':
   lm = LM(vocabs_file=vocabulary_path)
+  print(lm.get_top_10_ngram_freq(3, lm.vocabs))
   if lm.verify_normalization():
     print('Probabilities are normalized!')
   else:
