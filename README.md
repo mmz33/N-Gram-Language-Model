@@ -1,4 +1,4 @@
-# Language-Model
+# N-Gram-Language-Model
 
 - [x] Index words
 - [x] Store ngrams in a Trie data structure
