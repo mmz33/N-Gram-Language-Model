@@ -46,4 +46,8 @@ To meausre the performance of a language model, we compute the perplexity of the
 
 ## Results
 
-Model was tested on europarl dataset (dir `data`) and we got test PP approximatly 130.
+Model was tested on europarl dataset (dir `data`):
+
+Test PP with bigrams = 130.09
+
+Test PP with trigrams = 94.82
