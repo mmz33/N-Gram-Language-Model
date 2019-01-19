@@ -4,6 +4,8 @@ import utils
 from trie import Trie
 from queue import Queue
 import numpy as np
+import argparse
+import time
 
 # data paths
 data_train = 'data/train.corpus'
@@ -36,11 +38,7 @@ class LM:
 
     self.ngrams_root = {} # contains the root of (key)-gram trie
 
-    self.b = [] # contain b discounting params of (index+1)-gram
-    self.compute_b(n=2, vocabulary=self.corpus)
-    print('Discounting parameters:')
-    for n in range(len(self.b)):
-      print('b_{} = {}'.format(n+1, self.b[n]))
+    self.b = {} # contain b discounting params of (gram_rank -> b)
 
   def prepare_lm(self):
     """Prepare the language model for analysis and computations"""
@@ -185,6 +183,12 @@ class LM:
 
     print('Extraction is done.')
 
+    if n not in self.b:
+      self.compute_b(n, vocabulary=self.corpus)
+      print('Discounting parameters:')
+      for k, v in self.b.items():
+        print('b_{} = {}'.format(k, v))
+
     return res
 
   def get_top_10_ngram_freq(self, n, vocabulary):
@@ -247,6 +251,8 @@ class LM:
     :param vocabulary: An IndexMap, either corpus or vocabs
     """
 
+    if n in self.b: return
+
     print('Computing discounting parameters...')
 
     # ngrams are not added to the trie yet
@@ -267,7 +273,7 @@ class LM:
             singeltons += 1
           elif child.get_freq() == 2:
             doubletons += 1
-      self.b.append(singeltons/(singeltons + 2.0 * doubletons))
+      self.b[i+1] = (singeltons/(singeltons + 2.0 * doubletons))
       q = next_q
 
   def compute_prob(self, w, h, n):
@@ -282,14 +288,14 @@ class LM:
 
     # backoff to unigram (base case)
     if len(h) == 0:
-      prob = self.b[0]
+      prob = self.b[1]
       prob *= self.ngrams_root[n].get_num_of_children() # W - N_0(.)
       prob /= float(self.vocabs.get_num_of_words() * self.ngrams_root[n].get_freq()) # W * N
 
       w_node = self.ngrams_root[n].get_ngram_last_node([w])
       if w_node is not None:
         w_freq = w_node.get_freq()
-        prob += max(float(w_freq - self.b[0]) / self.ngrams_root[n].get_freq(), 0.0)
+        prob += max(float(w_freq - self.b[1]) / self.ngrams_root[n].get_freq(), 0.0)
 
       return prob
 
@@ -299,7 +305,7 @@ class LM:
     if h_node is None:
       return self.compute_prob(w, h[1:], n)
 
-    prob = self.b[len(h)]
+    prob = self.b[len(h)+1]
     prob *= float(h_node.get_num_of_children()) / h_node.get_freq() # (W - N_0(v,.))/N(v)
     prob *= self.compute_prob(w, h[1:], n) # recursively backoff
 
@@ -307,7 +313,7 @@ class LM:
     w_node = h_node.get_ngram_last_node([w])
     if w_node is not None:
       w_h_freq = w_node.get_freq()
-      prob += max(float(w_h_freq - self.b[len(h)]) / h_node.get_freq(), 0.0)
+      prob += max(float(w_h_freq - self.b[len(h)+1]) / h_node.get_freq(), 0.0)
 
     return prob
 
@@ -363,10 +369,27 @@ class LM:
 #######################################################################
 
 if __name__ == '__main__':
-  lm = LM(vocabs_file=vocabulary_path)
-  print(lm.get_top_10_ngram_freq(3, lm.vocabs))
-  if lm.verify_normalization():
-    print('Probabilities are normalized!')
-  else:
-    print('Probabilities are not normalized!')
-  print('Test PP: {}'.format(lm.perplexity(corpus_file=data_test, n=2)))
+  parser = argparse.ArgumentParser()
+
+  parser.add_argument('--train_file', type=str, default='./data/train.corpus',
+                      help='training data path')
+  parser.add_argument('--vocab_file', type=str, default='./data/vocabulary',
+                      help='vocabulary file path')
+  parser.add_argument('--test_file', type=str, default='./data/test.corpus',
+                      help='test file.')
+  parser.add_argument('--gram_rank', type=int, default=2,
+                      help='e.g 2 for bigram')
+
+  args = parser.parse_args()
+
+  start = time.time()
+
+  lm = LM(vocabs_file=args.vocab_file)
+  lm.extract_ngrams_and_freq(n=args.gram_rank, vocabulary=lm.corpus)
+  # if lm.verify_normalization():
+  #   print('Probabilities are normalized!')
+  # else:
+  #   print('Probabilities are not normalized!')
+  print('Test PP: {}'.format(lm.perplexity(corpus_file=args.test_file, n=args.gram_rank)))
+
+  print('Execution time: {} min'.format((time.time()-start)/60))
