@@ -38,10 +38,10 @@ However, this can be problamatic if we have unseen data because the counts will 
 
 ## Perplexity
 
-To meausre the performance of a language model, we compute the perplexity of the test corpus which is:
+To meausre the performance of a language model, we compute the perplexity of the test corpus using trained m-Grams:
 
 <p align="center">
-  <img src="https://latex.codecogs.com/gif.latex?PP%20%3D%20%5Cbigg%5B%5Cprod_%7Bn%3D1%7D%5E%7BN%7D%20p%28w_n%20%7C%20w_%7Bn-1%7D%29%5Cbigg%5D%5E%7B-1/N%7D">
+  <img src="http://latex.codecogs.com/gif.latex?%5CBigg%5B%5Cprod_%7Bn%3D1%7D%5E%7BN%7D%20p%28w_n%20%7C%20w_%7Bn-m&plus;1%7D%5E%7Bn-1%7D%29%5CBigg%5D%5E%7B-1/N%7D">
 </p>
 
 ## Results
