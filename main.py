@@ -7,15 +7,13 @@ import numpy as np
 import argparse
 import time
 
-# data paths
-data_train = 'data/train.corpus'
-data_test = 'data/test.corpus'
-vocabulary_path = 'data/vocabulary'
-
 class LM:
   """Represents the main entry point of the language model"""
 
-  def __init__(self, vocabs_file=None):
+  def __init__(self, data_train, vocabs_file=None):
+
+    self.data_train = data_train
+
     self.corpus = IndexMap()
     if vocabs_file:
       self.vocabs = IndexMap(vocabs_file)
@@ -45,7 +43,7 @@ class LM:
 
     print('Reading corpus for analysis...')
 
-    with open(data_train, 'r') as read_corpus:
+    with open(self.data_train, 'r') as read_corpus:
       for line in read_corpus:
         words = line.strip().split(' ')
         sent_len = len(words)
@@ -113,7 +111,7 @@ class LM:
     start_id = vocabulary.get_start_id()
     end_id = vocabulary.get_end_id()
     unk_id = vocabulary.get_unk_id()
-    with open(data_train, 'r') as read_corpus:
+    with open(self.data_train, 'r') as read_corpus:
       for line in read_corpus:
         sent = line.strip().split(' ')
         tokens.append(start_id)
@@ -141,7 +139,7 @@ class LM:
     print('Generating %d-grams from %s' % (n, 'corpus' if vocabulary == self.corpus else 'vocabulary'))
 
     self.ngrams_root[n] = Trie()
-    with open(data_train, 'r') as read_corpus:
+    with open(self.data_train, 'r') as read_corpus:
       for line in read_corpus:
         sent = line.strip().split(' ')
         ngram = [start_id]
@@ -384,7 +382,7 @@ if __name__ == '__main__':
 
   start = time.time()
 
-  lm = LM(vocabs_file=args.vocab_file)
+  lm = LM(args.train_file, args.vocab_file)
   lm.extract_ngrams_and_freq(n=args.gram_rank, vocabulary=lm.corpus)
   # if lm.verify_normalization(args.gram_rank):
   #   print('Probabilities are normalized!')
