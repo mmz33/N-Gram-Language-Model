@@ -317,7 +317,7 @@ class LM:
 
     return prob
 
-  def verify_normalization(self):
+  def verify_normalization(self, n):
     """Verify the normalization of bigram and unigram probabilities
 
     :return: True if the probabilities are normalized and False otherwise
@@ -328,8 +328,8 @@ class LM:
     bigram_probs = 0.0
     unigram_probs = 0.0
     for w in range(0, self.vocabs.get_num_of_words()):
-      bigram_probs += self.compute_prob(w, [10], n=2) # any word for history
-      unigram_probs += self.compute_prob(w, [], n=2)
+      bigram_probs += self.compute_prob(w, [10], n) # any word for history
+      unigram_probs += self.compute_prob(w, [], n)
 
     print('bigram_probs: {}, unigram_probs: {}'.format(bigram_probs, unigram_probs))
     return abs(1.0 - bigram_probs) <= 1e-02 and abs(1.0 - unigram_probs) <= 1e-02
@@ -386,10 +386,9 @@ if __name__ == '__main__':
 
   lm = LM(vocabs_file=args.vocab_file)
   lm.extract_ngrams_and_freq(n=args.gram_rank, vocabulary=lm.corpus)
-  # if lm.verify_normalization():
+  # if lm.verify_normalization(args.gram_rank):
   #   print('Probabilities are normalized!')
   # else:
   #   print('Probabilities are not normalized!')
   print('Test PP: {}'.format(lm.perplexity(corpus_file=args.test_file, n=args.gram_rank)))
-
-  print('Execution time: {} min'.format((time.time()-start)/60))
+  print('Execution time: %.3f min' % ((time.time()-start)/60))
